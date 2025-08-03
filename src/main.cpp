@@ -69,10 +69,10 @@ int main() {
     glfwSetFramebufferSizeCallback(window, windowSizeAdjustCallback);
 
     float rectangleVerticies[] = {
-        0.5f,  0.5f, 0.0f, // top right
-       -0.5f,  0.5f, 0.0f, // top left
-        0.5f, -0.5f, 0.0f, // bottom right
-       -0.5f, -0.5f, 0.0f, // bottom left
+        0.5f,  0.5f, 0.0f,
+       -0.5f,  0.5f, 0.0f,
+        0.5f, -0.5f, 0.0f,
+       -0.5f, -0.5f, 0.0f,
     };
     unsigned indices[] = {
         0, 2, 1,
@@ -98,7 +98,8 @@ int main() {
     glBindBuffer(GL_ARRAY_BUFFER, NULL);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, NULL);
 
-    const char* vertexShaderSource = "#version 330 core\n"
+    const char* vertexShaderSource = 
+        "#version 330 core\n"
         "layout (location = 0) in vec3 aPos;\n"
         "void main() {\n"
         "gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0f);\n"
@@ -112,10 +113,12 @@ int main() {
         return -1;
     }
 
-    const char* fragmentShaderSource = "#version 330 core\n"
+    const char* fragmentShaderSource = 
+        "#version 330 core\n"
+        "uniform vec4 color;"
         "out vec4 fragmentColor;\n"
         "void main() {\n"
-        "fragmentColor = vec4(1.0f, 0.3f, 0.3f, 1.0f);\n"
+        "fragmentColor = color;\n"
         "}";
     unsigned fragmentShader = 0;
     fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
@@ -142,10 +145,16 @@ int main() {
         glfwPollEvents();
         mapInputToGlfwState(window);
 
-        glClearColor(0.3f, 1.0f, 0.3f, 1.0f);
+        glClearColor(0.3f, 0.5f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
         glUseProgram(shaderProgram);
+        float time = glfwGetTime();
+        float redValue = (sin(time) / 2.0f) + 0.5f;
+        int colorUniformLocation = glGetUniformLocation(shaderProgram, "color");
+        float newColor[] = { redValue, 0.5f, 0.5f, 1.0f };
+        glUniform4fv(colorUniformLocation, 1, newColor);
+
         glBindVertexArray(vao);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
         glBindVertexArray(NULL);
