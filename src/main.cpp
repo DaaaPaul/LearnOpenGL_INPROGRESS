@@ -4,19 +4,36 @@
 
 const unsigned WINDOW_HEIGHT = 600;
 const unsigned WINDOW_WIDTH = 800;
+bool lineMode = false;
+bool stopper = false;
 
 void windowSizeAdjustCallback(GLFWwindow* window, int width, int height) {
     glViewport(0, 0, width, height);
 }
 
 void mapInputToGlfwState(GLFWwindow* window) {
-    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) glfwSetWindowShouldClose(window, true);
+    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
+        glfwSetWindowShouldClose(window, true);
+    }
+    if (glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_PRESS) {
+        if (lineMode && !stopper) {
+            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+            lineMode = false;
+            stopper = true;
+        } else if (!lineMode && !stopper) {
+            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+            lineMode = true;
+            stopper = true;
+        }
+    } else if (glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_RELEASE) {
+        stopper = false;
+    }
 }
 
 bool checkShaderCompilationSuccess(unsigned shaderID, const char* shaderType, bool isShaderProgram) {
     int success = 1;
     char errorMessage[512];
-    if (isShaderProgram) glGetProgramiv(shaderID, GL_COMPILE_STATUS, &success);
+    if (isShaderProgram) glGetProgramiv(shaderID, GL_LINK_STATUS, &success);
     else glGetShaderiv(shaderID, GL_COMPILE_STATUS, &success);
 
     if (!success) {
@@ -51,23 +68,35 @@ int main() {
     glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
     glfwSetFramebufferSizeCallback(window, windowSizeAdjustCallback);
 
-    float triangleVerticies[] = {
-        -0.5f, -0.5f, 0.0f,
-         0.5f, -0.5f, 0.0f,
-         0.0f,  0.5f, 0.0f,
+    float rectangleVerticies[] = {
+        0.5f,  0.5f, 0.0f, // top right
+       -0.5f,  0.5f, 0.0f, // top left
+        0.5f, -0.5f, 0.0f, // bottom right
+       -0.5f, -0.5f, 0.0f, // bottom left
+    };
+    unsigned indices[] = {
+        0, 2, 1,
+        1, 3, 2,
     };
 
     unsigned vao = 0;
     glGenVertexArrays(1, &vao);
-    glBindVertexArray(vao);
-
     unsigned vbo = 0;
     glGenBuffers(1, &vbo);
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(triangleVerticies), triangleVerticies, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(rectangleVerticies), rectangleVerticies, GL_STATIC_DRAW);
+    unsigned ebo = 0;
+    glGenBuffers(1, &ebo);
 
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glBindVertexArray(vao);
     glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+
+    glBindVertexArray(NULL);
+    glBindBuffer(GL_ARRAY_BUFFER, NULL);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, NULL);
 
     const char* vertexShaderSource = "#version 330 core\n"
         "layout (location = 0) in vec3 aPos;\n"
@@ -86,7 +115,7 @@ int main() {
     const char* fragmentShaderSource = "#version 330 core\n"
         "out vec4 fragmentColor;\n"
         "void main() {\n"
-        "fragmentColor = vec4(1.0f, 1.0f, 0.2f, 1.0f);\n"
+        "fragmentColor = vec4(1.0f, 0.3f, 0.3f, 1.0f);\n"
         "}";
     unsigned fragmentShader = 0;
     fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
@@ -113,18 +142,20 @@ int main() {
         glfwPollEvents();
         mapInputToGlfwState(window);
 
-        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+        glClearColor(0.3f, 1.0f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
         glUseProgram(shaderProgram);
         glBindVertexArray(vao);
-        glDrawArrays(GL_TRIANGLES, 0, 3);
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+        glBindVertexArray(NULL);
 
         glfwSwapBuffers(window);
     }
     
     glDeleteVertexArrays(1, &vao);
     glDeleteBuffers(1, &vbo);
+    glDeleteBuffers(1, &ebo);
     glDeleteProgram(shaderProgram);
     glfwTerminate();
     return 0;
