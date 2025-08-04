@@ -70,15 +70,10 @@ int main() {
 	glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
 	glfwSetFramebufferSizeCallback(window, windowSizeAdjustCallback);
 
-	float rectangleVerticies[] = {
-		0.5f,  0.5f, 0.0f,
-	   -0.5f,  0.5f, 0.0f,
-		0.5f, -0.5f, 0.0f,
-	   -0.5f, -0.5f, 0.0f,
-	};
-	unsigned indices[] = {
-		0, 2, 1,
-		1, 3, 2,
+	float vboData[] = {
+		 0.0f,  0.5f, 0.0f, 1.0f, 0.0f, 0.0f,
+	    -0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 0.0f,
+		 0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f,
 	};
 
 	unsigned vao = 0;
@@ -86,25 +81,25 @@ int main() {
 	unsigned vbo = 0;
 	glGenBuffers(1, &vbo);
 	glBindBuffer(GL_ARRAY_BUFFER, vbo);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(rectangleVerticies), rectangleVerticies, GL_STATIC_DRAW);
-	unsigned ebo = 0;
-	glGenBuffers(1, &ebo);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(vboData), vboData, GL_STATIC_DRAW);
 
 	glBindVertexArray(vao);
 	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), static_cast<void*>(0));
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+	glEnableVertexAttribArray(1);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), static_cast<void*>(0));
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), reinterpret_cast<void*>(3 * sizeof(float)));
 
-	glBindVertexArray(NULL);
 	glBindBuffer(GL_ARRAY_BUFFER, NULL);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, NULL);
+	glBindVertexArray(NULL);
 
 	const char* vertexShaderSource =
 		"#version 330 core\n"
 		"layout (location = 0) in vec3 aPos;\n"
+		"layout (location = 1) in vec3 aColor;\n"
+		"out vec4 color;"
 		"void main() {\n"
 		"gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0f);\n"
+		"color = vec4(aColor, 1.0);\n"
 		"}";
 	unsigned vertexShader = 0;
 	vertexShader = glCreateShader(GL_VERTEX_SHADER);
@@ -117,7 +112,7 @@ int main() {
 
 	const char* fragmentShaderSource =
 		"#version 330 core\n"
-		"uniform vec4 color;"
+		"in vec4 color;"
 		"out vec4 fragmentColor;\n"
 		"void main() {\n"
 		"fragmentColor = color;\n"
@@ -151,22 +146,16 @@ int main() {
 		glClear(GL_COLOR_BUFFER_BIT);
 
 		glUseProgram(shaderProgram);
-		float time = glfwGetTime();
-		float redValue = (sin(time) / 2.0f) + 0.5f;
-		int colorUniformLocation = glGetUniformLocation(shaderProgram, "color");
-		float newColor[] = { redValue, 0.5f, 0.5f, 1.0f };
-		glUniform4fv(colorUniformLocation, 1, newColor);
-
 		glBindVertexArray(vao);
-		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+		glDrawArrays(GL_TRIANGLES, 0, 3);
 		glBindVertexArray(NULL);
+		glUseProgram(NULL);
 
 		glfwSwapBuffers(window);
 	}
 
 	glDeleteVertexArrays(1, &vao);
 	glDeleteBuffers(1, &vbo);
-	glDeleteBuffers(1, &ebo);
 	glDeleteProgram(shaderProgram);
 	glfwTerminate();
 	return 0;
