@@ -9,15 +9,16 @@
 
 class Shader {
 	public:
+		unsigned programID;
+
 		Shader(const char* vShader, const char* fShader);
 		void use() const;
 		void kill() const;
-		void setUniform(const std::string& name, const bool newValue) const;
-		void setUniform(const std::string& name, const int newValue) const;
-		void setUniform(const std::string& name, const float newValue) const;
+		void setUniform(const char* name, const bool newValue) const;
+		void setUniform(const char* name, const int newValue) const;
+		void setUniform(const char* name, const float newValue) const;
 
 	private:
-		unsigned programID;
 		static bool checkShaderCompilationSuccess(unsigned shaderID, const char* shaderType, bool isShaderProgram);
 };
 
@@ -70,16 +71,16 @@ void Shader::kill() const {
 	glDeleteProgram(programID);
 }
 
-void Shader::setUniform(const std::string& name, const bool newValue) const {
-	glUniform1i(glGetUniformLocation(programID, name.c_str()), static_cast<int>(newValue));
+void Shader::setUniform(const char* name, const bool newValue) const {
+	glUniform1i(glGetUniformLocation(programID, name), static_cast<int>(newValue));
 }
 
-void Shader::setUniform(const std::string& name, const int newValue) const {
-	glUniform1i(glGetUniformLocation(programID, name.c_str()), newValue);
+void Shader::setUniform(const char* name, const int newValue) const {
+	glUniform1i(glGetUniformLocation(programID, name), newValue);
 }
 
-void Shader::setUniform(const std::string& name, const float newValue) const {
-	glUniform1f(glGetUniformLocation(programID, name.c_str()), newValue);
+void Shader::setUniform(const char* name, const float newValue) const {
+	glUniform1f(glGetUniformLocation(programID, name), newValue);
 }
 
 bool Shader::checkShaderCompilationSuccess(unsigned shaderID, const char* shaderType, bool isShaderProgram) {

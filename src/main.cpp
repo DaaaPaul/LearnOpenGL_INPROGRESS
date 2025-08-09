@@ -1,6 +1,8 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include "Shader.h"
+#define STB_IMAGE_IMPLEMENTATION
+#include "std_image.h"
 #include <iostream>
 
 const unsigned WINDOW_HEIGHT = 600;
@@ -16,19 +18,18 @@ void mapInputToGlfwState(GLFWwindow* window) {
 	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
 		glfwSetWindowShouldClose(window, true);
 	}
+
 	if (glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_PRESS) {
 		if (lineMode && !stopper) {
 			glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 			lineMode = false;
 			stopper = true;
-		}
-		else if (!lineMode && !stopper) {
+		} else if (!lineMode && !stopper) {
 			glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 			lineMode = true;
 			stopper = true;
 		}
-	}
-	else if (glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_RELEASE) {
+	} else if (glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_RELEASE) {
 		stopper = false;
 	}
 }
@@ -56,10 +57,17 @@ int main() {
 	glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
 	glfwSetFramebufferSizeCallback(window, windowSizeAdjustCallback);
 
-	float vboData[] = {
-		 0.0f,  0.5f, 0.0f, 1.0f, 0.0f, 0.0f,
-	    -0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 0.0f,
-		 0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f,
+	Shader shaderProgram("src/shaders/vertex.txt", "src/shaders/fragment.txt");
+
+	const float vboData[] = {
+		-0.5f, -0.5f, 0.0f,    1.0f, 0.0f, 0.0f,    0.0f, 0.0f, 
+	    -0.5f,  0.5f, 0.0f,    0.0f, 1.0f, 0.0f,    0.0f, 1.0f, 
+		 0.5f, -0.5f, 0.0f,    0.0f, 0.0f, 1.0f,    1.0f, 0.0f, 
+		 0.5f,  0.5f, 0.0f,    1.0f, 1.0f, 0.0f,    1.0f, 1.0f, 
+	};
+	const unsigned eboData[] = {
+		0, 1, 2,
+		3, 2, 1,
 	};
 
 	unsigned vao = 0;
@@ -68,17 +76,36 @@ int main() {
 	glGenBuffers(1, &vbo);
 	glBindBuffer(GL_ARRAY_BUFFER, vbo);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(vboData), vboData, GL_STATIC_DRAW);
+	unsigned ebo = 0;
+	glGenBuffers(1, &ebo);
 
 	glBindVertexArray(vao);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(eboData), eboData, GL_STATIC_DRAW);
 	glEnableVertexAttribArray(0);
 	glEnableVertexAttribArray(1);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), static_cast<void*>(0));
-	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), reinterpret_cast<void*>(3 * sizeof(float)));
+	glEnableVertexAttribArray(2);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), static_cast<void*>(0));
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), reinterpret_cast<void*>(3 * sizeof(float)));
+	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), reinterpret_cast<void*>(6 * sizeof(float)));
 
 	glBindBuffer(GL_ARRAY_BUFFER, NULL);
 	glBindVertexArray(NULL);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, NULL);
 
-	Shader shaderProgram("src/shaders/vertex.txt", "src/shaders/fragment.txt");
+	unsigned texture = 0;
+	glGenTextures(1, &texture);
+	glBindTexture(GL_TEXTURE_2D, texture);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	int height = 0, width = 0, channels = 0;
+	unsigned char* imageData = stbi_load("src/textures/container.jpg", &width, &height, &channels, 0);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, imageData);
+	glGenerateMipmap(GL_TEXTURE_2D);
+	glBindTexture(GL_TEXTURE_2D, NULL);
+	stbi_image_free(imageData);
 
 	while (!glfwWindowShouldClose(window)) {
 		glfwPollEvents();
@@ -88,8 +115,9 @@ int main() {
 		glClear(GL_COLOR_BUFFER_BIT);
 
 		shaderProgram.use();
+		glBindTexture(GL_TEXTURE_2D, texture);
 		glBindVertexArray(vao);
-		glDrawArrays(GL_TRIANGLES, 0, 3);
+		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, static_cast<void*>(0));
 		glBindVertexArray(NULL);
 		glUseProgram(NULL);
 
